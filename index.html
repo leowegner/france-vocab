@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unité 4 — Vocabulaire</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel2: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #a78bfa;
+    --good: #22c55e;
+    --bad: #ef4444;
+    --warn: #f59e0b;
+    --border: #475569;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f172a, #1e1b4b);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  header h1 {
+    margin: 0 0 8px 0;
+    font-size: 28px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--panel);
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+  }
+  .tab {
+    flex: 1;
+    min-width: max-content;
+    padding: 10px 14px;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--panel2);
+    color: var(--text);
+  }
+  .panel {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  select, button {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #475569; }
+  button.primary {
+    background: var(--accent);
+    color: #0f172a;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.primary:hover { background: #0ea5e9; }
+  .progress {
+    color: var(--muted);
+    font-size: 13px;
+    margin-left: auto;
+  }
+
+  /* Flashcards */
+  .flashcard {
+    perspective: 1000px;
+    height: 280px;
+    margin-bottom: 20px;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+    cursor: pointer;
+  }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+  }
+  .card-face.front {
+    background: linear-gradient(135deg, #1e3a8a, #3730a3);
+    border: 2px solid var(--accent);
+  }
+  .card-face.back {
+    background: linear-gradient(135deg, #581c87, #6b21a8);
+    border: 2px solid var(--accent2);
+    transform: rotateY(180deg);
+  }
+  .card-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .card-word {
+    font-size: 32px;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  .card-hint {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .nav-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .nav-row button { flex: 1; max-width: 160px; }
+
+  /* Quiz */
+  .question {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .question-word {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--panel2);
+    border-radius: 12px;
+    text-align: center;
+  }
+  .options {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .option {
+    background: var(--panel2);
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .option:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: #475569;
+  }
+  .option.correct {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: var(--good);
+  }
+  .option.wrong {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--bad);
+  }
+  .option:disabled { cursor: default; }
+
+  /* Write */
+  .write-input {
+    width: 100%;
+    background: var(--panel2);
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-family: inherit;
+    margin-bottom: 12px;
+  }
+  .write-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .write-input.correct { border-color: var(--good); background: rgba(34, 197, 94, 0.1); }
+  .write-input.wrong { border-color: var(--bad); background: rgba(239, 68, 68, 0.1); }
+  .feedback {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.good { background: rgba(34, 197, 94, 0.15); color: var(--good); }
+  .feedback.bad { background: rgba(239, 68, 68, 0.15); color: var(--bad); }
+  .feedback strong { color: var(--text); }
+
+  .stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--panel2);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .stat .num { font-weight: 700; font-size: 16px; margin-left: 6px; }
+  .stat.good .num { color: var(--good); }
+  .stat.bad .num { color: var(--bad); }
+
+  @media (max-width: 600px) {
+    body { padding: 12px; }
+    .panel { padding: 16px; }
+    .card-word { font-size: 24px; }
+    .question-word { font-size: 22px; }
+    header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Unité 4 — Vocabulaire</h1>
+    <p>Animaux · Verbes · Protection animale (FR ⇄ ES)</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="flash">📇 Flashcards</button>
+    <button class="tab" data-tab="quiz">✏️ Test</button>
+    <button class="tab" data-tab="write">⌨️ Examen</button>
+  </div>
+
+  <div class="panel">
+    <div class="controls">
+      <label style="font-size:13px;color:var(--muted)">Categoría:</label>
+      <select id="category">
+        <option value="all">Todo</option>
+        <option value="animaux">Les animaux</option>
+        <option value="verbes">Les verbes</option>
+        <option value="protection">Protection animale</option>
+      </select>
+      <label style="font-size:13px;color:var(--muted)">Dirección:</label>
+      <select id="direction">
+        <option value="fr-es">FR → ES</option>
+        <option value="es-fr">ES → FR</option>
+        <option value="mixed">Mezclado</option>
+      </select>
+      <button id="shuffle">🔀 Mezclar</button>
+      <span class="progress" id="progress"></span>
+    </div>
+
+    <!-- Flashcards -->
+    <div id="flash-view">
+      <div class="flashcard">
+        <div class="card-inner" id="card">
+          <div class="card-face front">
+            <div class="card-label" id="front-lang">Français</div>
+            <div class="card-word" id="front-word">—</div>
+            <div class="card-hint">Click para girar</div>
+          </div>
+          <div class="card-face back">
+            <div class="card-label" id="back-lang">Español</div>
+            <div class="card-word" id="back-word">—</div>
+            <div class="card-hint">Click para girar</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-row">
+        <button id="prev-card">◀ Anterior</button>
+        <button class="primary" id="flip-btn">Girar</button>
+        <button id="next-card">Siguiente ▶</button>
+      </div>
+    </div>
+
+    <!-- Quiz -->
+    <div id="quiz-view" style="display:none">
+      <div class="stats">
+        <div class="stat good">Aciertos<span class="num" id="quiz-correct">0</span></div>
+        <div class="stat bad">Errores<span class="num" id="quiz-wrong">0</span></div>
+        <div class="stat">Total<span class="num" id="quiz-total">0</span></div>
+      </div>
+      <div class="question" id="quiz-prompt">Traduce:</div>
+      <div class="question-word" id="quiz-word">—</div>
+      <div class="options" id="quiz-options"></div>
+      <button class="primary" id="quiz-next" style="width:100%;display:none">Siguiente pregunta ▶</button>
+    </div>
+
+    <!-- Write -->
+    <div id="write-view" style="display:none">
+      <div class="stats">
+        <div class="stat good">Aciertos<span class="num" id="write-correct">0</span></div>
+        <div class="stat bad">Errores<span class="num" id="write-wrong">0</span></div>
+        <div class="stat">Total<span class="num" id="write-total">0</span></div>
+      </div>
+      <div class="question" id="write-prompt">Escribe la traducción:</div>
+      <div class="question-word" id="write-word">—</div>
+      <input type="text" class="write-input" id="write-input" placeholder="Escribe aquí..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="feedback" id="write-feedback"></div>
+      <div style="display:flex;gap:10px">
+        <button class="primary" id="write-check" style="flex:1">Comprobar</button>
+        <button id="write-skip" style="flex:1">Saltar / Siguiente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const VOCAB = [
+  // Animaux
+  ["Un âne","Un burro","animaux"],
+  ["Une chèvre","Una cabra","animaux"],
+  ["Une poule","Una gallina","animaux"],
+  ["Un coq","Un gallo","animaux"],
+  ["Un hibou","Un búho","animaux"],
+  ["Un loup","Un lobo","animaux"],
+  ["Un moustique","Un mosquito","animaux"],
+  ["Un mouton","Una oveja","animaux"],
+  ["Un canard","Un pato","animaux"],
+  ["Une grenouille","Una rana","animaux"],
+  ["Un serpent","Una serpiente","animaux"],
+  ["Un kangourou","Un canguro","animaux"],
+  ["Une abeille","Una abeja","animaux"],
+  ["Un perroquet","Un loro","animaux"],
+  ["Un cheval","Un caballo","animaux"],
+  ["Une vache","Una vaca","animaux"],
+  ["Un lapin","Un conejo","animaux"],
+  ["Un crocodile","Un cocodrilo","animaux"],
+  ["Un zèbre","Una cebra","animaux"],
+  ["Un hippopotame","Un hipopótamo","animaux"],
+  ["Un singe","Un mono","animaux"],
+  ["Un papillon","Una mariposa","animaux"],
+  ["Une girafe","Una jirafa","animaux"],
+  ["Un éléphant","Un elefante","animaux"],
+  ["Un gorille","Un gorila","animaux"],
+  ["Un rhinocéros","Un rinoceronte","animaux"],
+  ["Un ours","Un oso","animaux"],
+  ["Un oiseau","Un pájaro","animaux"],
+  ["Un dauphin","Un delfín","animaux"],
+  ["Une baleine","Una ballena","animaux"],
+  ["Un requin","Un tiburón","animaux"],
+  ["Une pieuvre","Un pulpo","animaux"],
+  ["Une crevette","Una gamba","animaux"],
+  ["Un crabe","Un cangrejo","animaux"],
+
+  // Verbes
+  ["Nourrir","Alimentar","verbes"],
+  ["Adopter","Adoptar","verbes"],
+  ["Sensibiliser","Concienciar","verbes"],
+  ["Agir","Actuar","verbes"],
+  ["Traiter","Tratar","verbes"],
+  ["Soigner","Cuidar / Curar","verbes"],
+  ["Faire un don","Hacer una donación","verbes"],
+  ["Hydrater","Hidratar","verbes"],
+  ["Lutter contre","Luchar contra","verbes"],
+  ["Protéger","Proteger","verbes"],
+  ["Élever","Criar","verbes"],
+  ["Ramasser les excréments","Recoger los excrementos","verbes"],
+  ["Maltraiter","Maltratar","verbes"],
+  ["Abandonner","Abandonar","verbes"],
+  ["Battre","Pegar (a un animal)","verbes"],
+  ["Souffrir","Sufrir","verbes"],
+  ["S'occuper","Ocuparse de","verbes"],
+  ["Recueillir","Recoger (animales)","verbes"],
+  ["Désinfecter","Desinfectar","verbes"],
+  ["Sauver","Salvar","verbes"],
+  ["Contrôler","Controlar","verbes"],
+  ["Interdire","Prohibir","verbes"],
+  ["Éduquer","Educar","verbes"],
+  ["Caresser","Acariciar","verbes"],
+  ["Changer la litière","Cambiar la arena","verbes"],
+
+  // Protection animale
+  ["Le droit des animaux","El derecho de los animales","protection"],
+  ["Une expérience","Un experimento","protection"],
+  ["Le bien-être animal","El bienestar","protection"],
+  ["La maltraitance","El maltrato","protection"],
+  ["L'abandon","El abandono","protection"],
+  ["La souffrance","El sufrimiento","protection"],
+  ["La tristesse","La tristeza","protection"],
+  ["Un refuge","Un refugio","protection"],
+  ["Un éleveur / éleveuse","Un criador/a","protection"],
+  ["L'affection","El afecto","protection"],
+  ["La préservation","La preservación","protection"],
+  ["La protection","La protección","protection"],
+  ["La disparition","La desaparición","protection"],
+  ["Il est urgent de + inf","Es urgente + hacer","protection"],
+  ["Un bénévole","Un voluntario","protection"],
+  ["Une norme","Una norma","protection"],
+  ["La biodiversité","La biodiversidad","protection"],
+  ["La présence","La presencia","protection"],
+  ["Une obligation","Una obligación","protection"],
+  ["L'hygiène","La higiene","protection"],
+  ["L'alimentation","La alimentación","protection"],
+  ["Une puce","Un chip / Una pulga","protection"],
+  ["Un vaccin","Una vacuna","protection"],
+  ["Un parasite","Un parásito","protection"],
+  ["Être désorienté","Estar desorientado","protection"],
+  ["Être capable de","Ser capaz de","protection"],
+  ["Être joueur","Ser juguetón","protection"],
+  ["Être câlin / affectueux","Ser afectuoso","protection"],
+];
+
+// State
+let state = {
+  category: "all",
+  direction: "fr-es",
+  deck: [],
+  flashIdx: 0,
+  quiz: { idx: 0, correct: 0, wrong: 0, total: 0, answered: false },
+  write: { idx: 0, correct: 0, wrong: 0, total: 0 },
+};
+
+// Helpers
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildDeck() {
+  let pool = VOCAB;
+  if (state.category !== "all") pool = pool.filter(v => v[2] === state.category);
+  state.deck = shuffle(pool);
+  state.flashIdx = 0;
+  state.quiz.idx = 0;
+  state.write.idx = 0;
+}
+
+function getDirection() {
+  if (state.direction === "mixed") return Math.random() < 0.5 ? "fr-es" : "es-fr";
+  return state.direction;
+}
+
+function normalize(s) {
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[''`´]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripArticle(s) {
+  return s.replace(/^(un |une |le |la |l'|los |las |el )/i, "").trim();
+}
+
+function checkAnswer(user, correct) {
+  const u = normalize(user);
+  // Accept multiple correct answers separated by /
+  const variants = correct.split(/\s*\/\s*/).map(v => normalize(v));
+  for (const v of variants) {
+    if (u === v) return true;
+    if (stripArticle(u) === stripArticle(v)) return true;
+  }
+  return false;
+}
+
+// Tab switching
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    const tab = t.dataset.tab;
+    document.getElementById("flash-view").style.display = tab === "flash" ? "" : "none";
+    document.getElementById("quiz-view").style.display = tab === "quiz" ? "" : "none";
+    document.getElementById("write-view").style.display = tab === "write" ? "" : "none";
+    if (tab === "quiz") renderQuiz();
+    if (tab === "write") renderWrite();
+    if (tab === "flash") renderFlash();
+    updateProgress();
+  });
+});
+
+// Controls
+document.getElementById("category").addEventListener("change", e => {
+  state.category = e.target.value;
+  buildDeck();
+  renderAll();
+});
+document.getElementById("direction").addEventListener("change", e => {
+  state.direction = e.target.value;
+  renderAll();
+});
+document.getElementById("shuffle").addEventListener("click", () => {
+  buildDeck();
+  renderAll();
+});
+
+function renderAll() {
+  renderFlash();
+  renderQuiz();
+  renderWrite();
+  updateProgress();
+}
+
+function updateProgress() {
+  const active = document.querySelector(".tab.active").dataset.tab;
+  const total = state.deck.length;
+  let cur = 0;
+  if (active === "flash") cur = state.flashIdx + 1;
+  if (active === "quiz") cur = state.quiz.idx + 1;
+  if (active === "write") cur = state.write.idx + 1;
+  document.getElementById("progress").textContent = total > 0 ? `${cur} / ${total}` : "—";
+}
+
+// Flashcards
+const cardEl = document.getElementById("card");
+cardEl.addEventListener("click", () => cardEl.classList.toggle("flipped"));
+document.getElementById("flip-btn").addEventListener("click", () => cardEl.classList.toggle("flipped"));
+document.getElementById("prev-card").addEventListener("click", () => {
+  state.flashIdx = (state.flashIdx - 1 + state.deck.length) % state.deck.length;
+  renderFlash();
+});
+document.getElementById("next-card").addEventListener("click", () => {
+  state.flashIdx = (state.flashIdx + 1) % state.deck.length;
+  renderFlash();
+});
+
+function renderFlash() {
+  if (!state.deck.length) return;
+  cardEl.classList.remove("flipped");
+  const item = state.deck[state.flashIdx];
+  const dir = state.direction === "mixed"
+    ? (state.flashIdx % 2 === 0 ? "fr-es" : "es-fr")
+    : state.direction;
+  if (dir === "fr-es") {
+    document.getElementById("front-lang").textContent = "Français";
+    document.getElementById("front-word").textContent = item[0];
+    document.getElementById("back-lang").textContent = "Español";
+    document.getElementById("back-word").textContent = item[1];
+  } else {
+    document.getElementById("front-lang").textContent = "Español";
+    document.getElementById("front-word").textContent = item[1];
+    document.getElementById("back-lang").textContent = "Français";
+    document.getElementById("back-word").textContent = item[0];
+  }
+  updateProgress();
+}
+
+// Quiz
+function renderQuiz() {
+  if (!state.deck.length) return;
+  state.quiz.answered = false;
+  const item = state.deck[state.quiz.idx % state.deck.length];
+  const dir = getDirection();
+  const [questionWord, correctAnswer] = dir === "fr-es" ? [item[0], item[1]] : [item[1], item[0]];
+  const answerIdx = dir === "fr-es" ? 1 : 0;
+
+  document.getElementById("quiz-prompt").textContent =
+    dir === "fr-es" ? "Traduce al español:" : "Traduce al francés:";
+  document.getElementById("quiz-word").textContent = questionWord;
+
+  // Build distractors from same category if possible
+  const samePool = VOCAB.filter(v => v !== item && v[2] === item[2]);
+  const distractors = shuffle(samePool).slice(0, 3).map(v => v[answerIdx]);
+  const allOptions = shuffle([correctAnswer, ...distractors]);
+
+  const optsEl = document.getElementById("quiz-options");
+  optsEl.innerHTML = "";
+  allOptions.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => {
+      if (state.quiz.answered) return;
+      state.quiz.answered = true;
+      state.quiz.total++;
+      const isCorrect = opt === correctAnswer;
+      if (isCorrect) {
+        state.quiz.correct++;
+        btn.classList.add("correct");
+      } else {
+        state.quiz.wrong++;
+        btn.classList.add("wrong");
+        // highlight correct one
+        [...optsEl.children].forEach(c => {
+          if (c.textContent === correctAnswer) c.classList.add("correct");
+        });
+      }
+      [...optsEl.children].forEach(c => c.disabled = true);
+      updateQuizStats();
+      document.getElementById("quiz-next").style.display = "block";
+    });
+    optsEl.appendChild(btn);
+  });
+  document.getElementById("quiz-next").style.display = "none";
+  updateQuizStats();
+  updateProgress();
+}
+
+function updateQuizStats() {
+  document.getElementById("quiz-correct").textContent = state.quiz.correct;
+  document.getElementById("quiz-wrong").textContent = state.quiz.wrong;
+  document.getElementById("quiz-total").textContent = state.quiz.total;
+}
+
+document.getElementById("quiz-next").addEventListener("click", () => {
+  state.quiz.idx = (state.quiz.idx + 1) % state.deck.length;
+  if (state.quiz.idx === 0) state.deck = shuffle(state.deck);
+  renderQuiz();
+});
+
+// Write
+function renderWrite() {
+  if (!state.deck.length) return;
+  const item = state.deck[state.write.idx % state.deck.length];
+  const dir = getDirection();
+  const [questionWord, correctAnswer] = dir === "fr-es" ? [item[0], item[1]] : [item[1], item[0]];
+
+  document.getElementById("write-prompt").textContent =
+    dir === "fr-es" ? "Escribe la traducción al español:" : "Escribe la traducción al francés:";
+  document.getElementById("write-word").textContent = questionWord;
+
+  const input = document.getElementById("write-input");
+  input.value = "";
+  input.classList.remove("correct", "wrong");
+  input.disabled = false;
+  input.dataset.correct = correctAnswer;
+  input.focus();
+
+  document.getElementById("write-feedback").classList.remove("show", "good", "bad");
+  document.getElementById("write-check").textContent = "Comprobar";
+  updateWriteStats();
+  updateProgress();
+}
+
+function updateWriteStats() {
+  document.getElementById("write-correct").textContent = state.write.correct;
+  document.getElementById("write-wrong").textContent = state.write.wrong;
+  document.getElementById("write-total").textContent = state.write.total;
+}
+
+function doWriteCheck() {
+  const input = document.getElementById("write-input");
+  const correct = input.dataset.correct;
+  if (input.disabled) {
+    // Already checked → next
+    nextWrite();
+    return;
+  }
+  if (!input.value.trim()) return;
+  state.write.total++;
+  const ok = checkAnswer(input.value, correct);
+  const fb = document.getElementById("write-feedback");
+  fb.classList.add("show");
+  if (ok) {
+    state.write.correct++;
+    input.classList.add("correct");
+    fb.classList.add("good");
+    fb.classList.remove("bad");
+    fb.innerHTML = `✅ ¡Correcto! <strong>${correct}</strong>`;
+  } else {
+    state.write.wrong++;
+    input.classList.add("wrong");
+    fb.classList.add("bad");
+    fb.classList.remove("good");
+    fb.innerHTML = `❌ Respuesta correcta: <strong>${correct}</strong>`;
+  }
+  input.disabled = true;
+  document.getElementById("write-check").textContent = "Siguiente ▶";
+  updateWriteStats();
+}
+
+function nextWrite() {
+  state.write.idx = (state.write.idx + 1) % state.deck.length;
+  if (state.write.idx === 0) state.deck = shuffle(state.deck);
+  renderWrite();
+}
+
+document.getElementById("write-check").addEventListener("click", doWriteCheck);
+document.getElementById("write-skip").addEventListener("click", nextWrite);
+document.getElementById("write-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    doWriteCheck();
+  }
+});
+
+// Init
+buildDeck();
+renderAll();
+</script>
+</body>
+</html>

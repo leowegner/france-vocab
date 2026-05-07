@@ -332,6 +332,11 @@
   .vocab-row .fr { color: var(--text); font-weight: 500; }
   .vocab-row .es { color: var(--muted); }
   .vocab-row .arrow { color: var(--border); font-size: 12px; }
+  .vocab-row.has-mistakes {
+    background: rgba(239, 68, 68, 0.12);
+    border-left: 3px solid var(--bad);
+  }
+  .vocab-row.has-mistakes .arrow { color: var(--bad); font-weight: 600; }
   .search-box {
     width: 100%;
     background: var(--panel2);
@@ -388,6 +393,7 @@
         <option value="animaux">Les animaux</option>
         <option value="verbes">Les verbes</option>
         <option value="protection">Protection animale</option>
+        <option value="mistakes" id="mistakes-option">⚠️ Solo fallos (0)</option>
       </select>
       <label style="font-size:13px;color:var(--muted)">Dirección:</label>
       <select id="direction">
@@ -396,6 +402,7 @@
         <option value="mixed">Mezclado</option>
       </select>
       <button id="shuffle">🔀 Mezclar</button>
+      <button id="reset-mistakes" title="Borrar el historial de fallos">🗑️ Borrar fallos</button>
       <span class="progress" id="progress"></span>
     </div>
 
@@ -580,9 +587,52 @@ function shuffle(arr) {
   return a;
 }
 
+// Mistakes tracking (localStorage)
+const MISTAKES_KEY = "france-vocab:mistakes";
+let mistakes = {}; // { "fr|es": count }
+function loadMistakes() {
+  try { mistakes = JSON.parse(localStorage.getItem(MISTAKES_KEY) || "{}"); }
+  catch(e) { mistakes = {}; }
+}
+function saveMistakes() {
+  try { localStorage.setItem(MISTAKES_KEY, JSON.stringify(mistakes)); } catch(e) {}
+}
+function vocabKey(item) { return item[0] + "|" + item[1]; }
+function recordMistake(item) {
+  const k = vocabKey(item);
+  mistakes[k] = (mistakes[k] || 0) + 1;
+  saveMistakes();
+  updateMistakesUI();
+}
+function recordCorrect(item) {
+  const k = vocabKey(item);
+  if (mistakes[k]) {
+    mistakes[k]--;
+    if (mistakes[k] <= 0) delete mistakes[k];
+    saveMistakes();
+    updateMistakesUI();
+  }
+}
+function getMistakesPool() {
+  return VOCAB.filter(v => mistakes[vocabKey(v)] > 0);
+}
+function updateMistakesUI() {
+  const count = Object.keys(mistakes).length;
+  const opt = document.getElementById("mistakes-option");
+  if (opt) opt.textContent = `⚠️ Solo fallos (${count})`;
+  // Re-render list if visible (so highlights update)
+  if (document.getElementById("list-view").style.display !== "none") renderList();
+}
+
 function buildDeck() {
-  let pool = VOCAB;
-  if (state.category !== "all") pool = pool.filter(v => v[2] === state.category);
+  let pool;
+  if (state.category === "mistakes") {
+    pool = getMistakesPool();
+  } else if (state.category !== "all") {
+    pool = VOCAB.filter(v => v[2] === state.category);
+  } else {
+    pool = VOCAB;
+  }
   state.deck = shuffle(pool);
   state.flashIdx = 0;
   state.quiz.idx = 0;
@@ -649,6 +699,17 @@ document.getElementById("shuffle").addEventListener("click", () => {
   buildDeck();
   renderAll();
 });
+document.getElementById("reset-mistakes").addEventListener("click", () => {
+  if (!Object.keys(mistakes).length) { alert("No hay fallos guardados."); return; }
+  if (!confirm("¿Borrar todo el historial de fallos?")) return;
+  mistakes = {};
+  saveMistakes();
+  updateMistakesUI();
+  if (state.category === "mistakes") {
+    buildDeck();
+    renderAll();
+  }
+});
 
 function renderAll() {
   renderFlash();
@@ -656,6 +717,32 @@ function renderAll() {
   renderWrite();
   renderList();
   updateProgress();
+  updateEmptyState();
+}
+
+function updateEmptyState() {
+  const empty = state.deck.length === 0;
+  const msg = state.category === "mistakes"
+    ? "🎉 ¡No tienes fallos pendientes! Haz el test o examen para acumular fallos a repasar."
+    : "Sin palabras en esta categoría.";
+  ["flash-view","quiz-view","write-view"].forEach(id => {
+    const el = document.getElementById(id);
+    let banner = el.querySelector(".empty-banner");
+    if (empty) {
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.className = "empty-banner";
+        banner.style.cssText = "padding:40px;text-align:center;color:var(--muted);font-size:14px";
+        el.prepend(banner);
+      }
+      banner.textContent = msg;
+      // hide other children
+      [...el.children].forEach(c => { if (c !== banner) c.style.visibility = "hidden"; });
+    } else {
+      if (banner) banner.remove();
+      [...el.children].forEach(c => c.style.visibility = "");
+    }
+  });
 }
 
 // Speech recognition (mic input)
@@ -739,6 +826,7 @@ function renderQuiz() {
       if (isCorrect) {
         state.quiz.correct++;
         btn.classList.add("correct");
+        recordCorrect(item);
       } else {
         state.quiz.wrong++;
         btn.classList.add("wrong");
@@ -746,6 +834,7 @@ function renderQuiz() {
         [...optsEl.children].forEach(c => {
           if (c.textContent === correctAnswer) c.classList.add("correct");
         });
+        recordMistake(item);
       }
       [...optsEl.children].forEach(c => c.disabled = true);
       updateQuizStats();
@@ -776,6 +865,7 @@ function renderWrite() {
   const item = state.deck[state.write.idx % state.deck.length];
   const dir = getDirection();
   const [questionWord, correctAnswer] = dir === "fr-es" ? [item[0], item[1]] : [item[1], item[0]];
+  state.write.currentItem = item;
 
   document.getElementById("write-prompt").textContent =
     dir === "fr-es" ? "Escribe la traducción al español:" : "Escribe la traducción al francés:";
@@ -822,12 +912,14 @@ function doWriteCheck() {
     fb.classList.add("good");
     fb.classList.remove("bad");
     fb.innerHTML = `✅ ¡Correcto! <strong>${correct}</strong>`;
+    if (state.write.currentItem) recordCorrect(state.write.currentItem);
   } else {
     state.write.wrong++;
     input.classList.add("wrong");
     fb.classList.add("bad");
     fb.classList.remove("good");
     fb.innerHTML = `❌ Respuesta correcta: <strong>${correct}</strong>`;
+    if (state.write.currentItem) recordMistake(state.write.currentItem);
   }
   input.disabled = true;
   document.getElementById("write-check").textContent = "Siguiente ▶";
@@ -907,8 +999,10 @@ function renderList() {
   const container = document.getElementById("vocab-list");
   const filter = (document.getElementById("search").value || "").toLowerCase().trim();
   const cat = state.category;
-  let pool = VOCAB;
-  if (cat !== "all") pool = pool.filter(v => v[2] === cat);
+  let pool;
+  if (cat === "mistakes") pool = getMistakesPool();
+  else if (cat !== "all") pool = VOCAB.filter(v => v[2] === cat);
+  else pool = VOCAB;
   if (filter) {
     pool = pool.filter(v =>
       v[0].toLowerCase().includes(filter) || v[1].toLowerCase().includes(filter)
@@ -935,12 +1029,14 @@ function renderList() {
     groups[key].forEach(v => {
       const row = document.createElement("div");
       row.className = "vocab-row";
+      const failCount = mistakes[vocabKey(v)] || 0;
+      if (failCount > 0) row.classList.add("has-mistakes");
       const fr = document.createElement("span");
       fr.className = "fr";
       fr.textContent = v[0];
       const arrow = document.createElement("span");
       arrow.className = "arrow";
-      arrow.textContent = "→";
+      arrow.textContent = failCount > 0 ? `⚠️${failCount}` : "→";
       const es = document.createElement("span");
       es.className = "es";
       es.textContent = v[1];
@@ -957,6 +1053,8 @@ function renderList() {
 document.getElementById("search").addEventListener("input", renderList);
 
 // Init
+loadMistakes();
+updateMistakesUI();
 buildDeck();
 renderAll();
 </script>

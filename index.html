@@ -283,6 +283,16 @@
     flex-shrink: 0;
   }
   .speak-btn:hover { background: rgba(56, 189, 248, 0.3); }
+  .speak-btn.recording {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: var(--bad);
+    color: var(--bad);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
   .speak-btn.small {
     width: 28px;
     height: 28px;
@@ -311,7 +321,7 @@
   }
   .vocab-row {
     display: grid;
-    grid-template-columns: 1fr auto 1fr auto;
+    grid-template-columns: 1fr auto 1fr;
     gap: 8px;
     align-items: center;
     background: var(--panel2);
@@ -386,7 +396,6 @@
         <option value="mixed">Mezclado</option>
       </select>
       <button id="shuffle">🔀 Mezclar</button>
-      <label class="auto-toggle"><input type="checkbox" id="auto-speak"> 🔊 Auto-dictar</label>
       <span class="progress" id="progress"></span>
     </div>
 
@@ -406,10 +415,7 @@
           </div>
         </div>
       </div>
-      <div class="speak-row">
-        <button class="speak-btn" id="flash-speak" title="Dictar">🔊</button>
-      </div>
-      <div class="nav-row" style="margin-top:12px">
+      <div class="nav-row">
         <button id="prev-card">◀ Anterior</button>
         <button class="primary" id="flip-btn">Girar</button>
         <button id="next-card">Siguiente ▶</button>
@@ -425,9 +431,6 @@
       </div>
       <div class="question" id="quiz-prompt">Traduce:</div>
       <div class="question-word" id="quiz-word">—</div>
-      <div class="speak-row" style="margin-top:-12px;margin-bottom:16px">
-        <button class="speak-btn small" id="quiz-speak" title="Dictar">🔊</button>
-      </div>
       <div class="options" id="quiz-options"></div>
       <button class="primary" id="quiz-next" style="width:100%;display:none">Siguiente pregunta ▶</button>
     </div>
@@ -441,10 +444,11 @@
       </div>
       <div class="question" id="write-prompt">Escribe la traducción:</div>
       <div class="question-word" id="write-word">—</div>
-      <div class="speak-row" style="margin-top:-12px;margin-bottom:16px">
-        <button class="speak-btn small" id="write-speak" title="Dictar">🔊</button>
+      <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px">
+        <input type="text" class="write-input" id="write-input" placeholder="Escribe o usa el micrófono..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-bottom:0;flex:1">
+        <button class="speak-btn" id="write-mic" title="Hablar (micrófono)" style="width:48px;height:auto">🎤</button>
       </div>
-      <input type="text" class="write-input" id="write-input" placeholder="Escribe aquí..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div id="mic-status" style="font-size:12px;color:var(--muted);margin-bottom:8px;min-height:16px"></div>
       <div class="feedback" id="write-feedback"></div>
       <div style="display:flex;gap:10px">
         <button class="primary" id="write-check" style="flex:1">Comprobar</button>
@@ -455,11 +459,6 @@
     <!-- Vocabulary list -->
     <div id="list-view" style="display:none">
       <input type="text" class="search-box" id="search" placeholder="🔍 Buscar palabra..." autocomplete="off">
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button id="speak-all-fr">🔊 Dictar todo (FR)</button>
-        <button id="speak-all-es">🔊 Dictar todo (ES)</button>
-        <button id="stop-speak">⏹ Parar</button>
-      </div>
       <div id="vocab-list"></div>
     </div>
   </div>
@@ -659,48 +658,10 @@ function renderAll() {
   updateProgress();
 }
 
-// Text-to-speech
-let voicesCache = [];
-function loadVoices() {
-  voicesCache = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-}
-if (window.speechSynthesis) {
-  loadVoices();
-  window.speechSynthesis.onvoiceschanged = loadVoices;
-}
-function pickVoice(lang) {
-  const prefix = lang.split("-")[0];
-  let v = voicesCache.find(x => x.lang === lang);
-  if (!v) v = voicesCache.find(x => x.lang.startsWith(prefix + "-"));
-  if (!v) v = voicesCache.find(x => x.lang.startsWith(prefix));
-  return v;
-}
-function cleanForSpeech(text) {
-  // Keep only first variant if "/" used
-  return text.split("/")[0].replace(/\(.*?\)/g, "").replace(/\+ inf/, "").trim();
-}
-function speak(text, lang) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(cleanForSpeech(text));
-  u.lang = lang;
-  const v = pickVoice(lang);
-  if (v) u.voice = v;
-  u.rate = 0.9;
-  window.speechSynthesis.speak(u);
-}
-function speakSequence(items) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  items.forEach(([text, lang]) => {
-    const u = new SpeechSynthesisUtterance(cleanForSpeech(text));
-    u.lang = lang;
-    const v = pickVoice(lang);
-    if (v) u.voice = v;
-    u.rate = 0.9;
-    window.speechSynthesis.speak(u);
-  });
-}
+// Speech recognition (mic input)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micRec = null;
+let micActive = false;
 
 function updateProgress() {
   const active = document.querySelector(".tab.active").dataset.tab;
@@ -732,37 +693,19 @@ function renderFlash() {
   const dir = state.direction === "mixed"
     ? (state.flashIdx % 2 === 0 ? "fr-es" : "es-fr")
     : state.direction;
-  let frontText, frontLang;
   if (dir === "fr-es") {
     document.getElementById("front-lang").textContent = "Français";
     document.getElementById("front-word").textContent = item[0];
     document.getElementById("back-lang").textContent = "Español";
     document.getElementById("back-word").textContent = item[1];
-    frontText = item[0]; frontLang = "fr-FR";
   } else {
     document.getElementById("front-lang").textContent = "Español";
     document.getElementById("front-word").textContent = item[1];
     document.getElementById("back-lang").textContent = "Français";
     document.getElementById("back-word").textContent = item[0];
-    frontText = item[1]; frontLang = "es-ES";
   }
-  state.currentFlash = { text: frontText, lang: frontLang };
-  if (document.getElementById("auto-speak").checked) speak(frontText, frontLang);
   updateProgress();
 }
-
-document.getElementById("flash-speak").addEventListener("click", () => {
-  // Speak whichever side is currently visible
-  const flipped = cardEl.classList.contains("flipped");
-  const item = state.deck[state.flashIdx];
-  const dir = state.direction === "mixed"
-    ? (state.flashIdx % 2 === 0 ? "fr-es" : "es-fr")
-    : state.direction;
-  const frontFr = dir === "fr-es";
-  const showingFront = !flipped;
-  const speakFr = (frontFr && showingFront) || (!frontFr && !showingFront);
-  speak(speakFr ? item[0] : item[1], speakFr ? "fr-FR" : "es-ES");
-});
 
 // Quiz
 function renderQuiz() {
@@ -776,9 +719,6 @@ function renderQuiz() {
   document.getElementById("quiz-prompt").textContent =
     dir === "fr-es" ? "Traduce al español:" : "Traduce al francés:";
   document.getElementById("quiz-word").textContent = questionWord;
-  state.quiz.lang = dir === "fr-es" ? "fr-FR" : "es-ES";
-  state.quiz.qWord = questionWord;
-  if (document.getElementById("auto-speak").checked) speak(questionWord, state.quiz.lang);
 
   // Build distractors from same category if possible
   const samePool = VOCAB.filter(v => v !== item && v[2] === item[2]);
@@ -840,9 +780,9 @@ function renderWrite() {
   document.getElementById("write-prompt").textContent =
     dir === "fr-es" ? "Escribe la traducción al español:" : "Escribe la traducción al francés:";
   document.getElementById("write-word").textContent = questionWord;
-  state.write.lang = dir === "fr-es" ? "fr-FR" : "es-ES";
-  state.write.qWord = questionWord;
-  if (document.getElementById("auto-speak").checked) speak(questionWord, state.write.lang);
+  state.write.lang = dir === "fr-es" ? "es-ES" : "fr-FR";
+  document.getElementById("mic-status").textContent = "";
+  if (micActive && micRec) { try { micRec.stop(); } catch(e){} }
 
   const input = document.getElementById("write-input");
   input.value = "";
@@ -909,11 +849,51 @@ document.getElementById("write-input").addEventListener("keydown", e => {
   }
 });
 
-document.getElementById("quiz-speak").addEventListener("click", () => {
-  if (state.quiz.qWord) speak(state.quiz.qWord, state.quiz.lang);
-});
-document.getElementById("write-speak").addEventListener("click", () => {
-  if (state.write.qWord) speak(state.write.qWord, state.write.lang);
+// Microphone (speech recognition) for Examen
+const micBtn = document.getElementById("write-mic");
+const micStatus = document.getElementById("mic-status");
+if (!SR) {
+  micBtn.disabled = true;
+  micBtn.title = "Tu navegador no soporta reconocimiento de voz";
+  micBtn.style.opacity = 0.4;
+}
+function startMic() {
+  if (!SR || micActive) return;
+  micRec = new SR();
+  micRec.lang = state.write.lang || "es-ES";
+  micRec.interimResults = true;
+  micRec.continuous = false;
+  micRec.maxAlternatives = 1;
+  let finalText = "";
+  micRec.onstart = () => {
+    micActive = true;
+    micBtn.classList.add("recording");
+    micStatus.textContent = "🎙️ Escuchando... habla ahora";
+  };
+  micRec.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += t;
+      else interim += t;
+    }
+    document.getElementById("write-input").value = (finalText + interim).trim();
+  };
+  micRec.onerror = (e) => {
+    micStatus.textContent = "⚠️ Error: " + e.error;
+  };
+  micRec.onend = () => {
+    micActive = false;
+    micBtn.classList.remove("recording");
+    if (!micStatus.textContent.startsWith("⚠️")) micStatus.textContent = "";
+  };
+  try { micRec.start(); } catch(e) { micStatus.textContent = "⚠️ " + e.message; }
+}
+function stopMic() {
+  if (micRec && micActive) { try { micRec.stop(); } catch(e){} }
+}
+micBtn.addEventListener("click", () => {
+  if (micActive) stopMic(); else startMic();
 });
 
 // Vocabulary list
@@ -964,17 +944,9 @@ function renderList() {
       const es = document.createElement("span");
       es.className = "es";
       es.textContent = v[1];
-      const btn = document.createElement("button");
-      btn.className = "speak-btn small";
-      btn.textContent = "🔊";
-      btn.title = "Dictar";
-      btn.addEventListener("click", () => {
-        speakSequence([[v[0], "fr-FR"], [v[1], "es-ES"]]);
-      });
       row.appendChild(fr);
       row.appendChild(arrow);
       row.appendChild(es);
-      row.appendChild(btn);
       list.appendChild(row);
     });
     sec.appendChild(list);
@@ -983,19 +955,6 @@ function renderList() {
 }
 
 document.getElementById("search").addEventListener("input", renderList);
-document.getElementById("speak-all-fr").addEventListener("click", () => {
-  let pool = VOCAB;
-  if (state.category !== "all") pool = pool.filter(v => v[2] === state.category);
-  speakSequence(pool.map(v => [v[0], "fr-FR"]));
-});
-document.getElementById("speak-all-es").addEventListener("click", () => {
-  let pool = VOCAB;
-  if (state.category !== "all") pool = pool.filter(v => v[2] === state.category);
-  speakSequence(pool.map(v => [v[1], "es-ES"]));
-});
-document.getElementById("stop-speak").addEventListener("click", () => {
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-});
 
 // Init
 buildDeck();

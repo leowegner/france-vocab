@@ -607,8 +607,7 @@ function recordMistake(item) {
 function recordCorrect(item) {
   const k = vocabKey(item);
   if (mistakes[k]) {
-    mistakes[k]--;
-    if (mistakes[k] <= 0) delete mistakes[k];
+    delete mistakes[k];
     saveMistakes();
     updateMistakesUI();
   }
